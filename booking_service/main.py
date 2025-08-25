@@ -34,7 +34,7 @@ async def calculate_booking_price(booking_request: BookingRequest):
     # Başlangıç ve bitiş tarihi arasındaki gün sayısını hesapla
     day_count = (booking_request.end_date - booking_request.start_date).days + 1
     if day_count <= 0:
-        raise HTTPException(status_code=400, detail="Geçersiz tarih aralığı. - Lütfen doğru tarih aralığını girin.")
+        raise HTTPException(status_code=400, detail="Geçersiz tarih aralığı - Lütfen doğru tarih aralığını girin.")
     
     # Car-service'den aracın günlük fiyatını al
     car_service_url = "http://car-service:8001/cars/"
