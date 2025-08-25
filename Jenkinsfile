@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Build & Dockerize Booking-Service') {
             when {
-                changeset "booking-service/**"
+                changeset "booking_service/**"
             }
             steps {
                 echo 'Booking-service klasöründe değişiklik yapıldı, imaj oluşturuluyor...'
@@ -18,7 +18,7 @@ pipeline {
 
         stage('Build & Dockerize User-Service') {
             when {
-                changeset "user-service/**"
+                changeset "user_service/**"
             }
             steps {
                 echo 'User-service klasöründe değişiklik yapıldı, imaj oluşturuluyor...'
@@ -34,7 +34,7 @@ pipeline {
 
         stage('Build & Dockerize Car-Service') {
             when {
-                changeset "car-service/**"
+                changeset "car_service/**"
             }
             steps {
                 echo 'Car-service klasöründe değişiklik yapıldı, imaj oluşturuluyor...'
