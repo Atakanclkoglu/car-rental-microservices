@@ -1,0 +1,10 @@
+# .gitignore
+
+# Sanal ortam klasörünü yok say
+venv/
+
+# ...Diğer göz ardı edilen dosyalar (Python için)
+# .DS_Store
+# __pycache__/
+# *.pyc
+# .env
