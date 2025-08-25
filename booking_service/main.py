@@ -47,7 +47,7 @@ async def calculate_booking_price(booking_request: BookingRequest):
             daily_rate = car_details.get("price_per_day")
 
             if daily_rate is None:
-                raise HTTPException(status_code=404, detail="Araba bulunamadı.")
+                raise HTTPException(status_code=404, detail="Araba bulunamadı - araba ekleyiniz.")
             
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail="Car-service'den veri alınamadı.")
