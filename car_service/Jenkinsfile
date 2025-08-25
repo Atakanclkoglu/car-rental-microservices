@@ -5,7 +5,7 @@ pipeline {
         stage('Build & Dockerize Car-Service') {
             steps {
                 echo 'Building FastAPI application and creating Docker image...'
-                sh 'docker build -t atakandockerdevops/arac_kiralama_fastapi1:latest -f Dockerfile .'
+                sh 'docker build -t atakandockerdevops/arac_kiralama_fastapi1:latest -f car_service/Dockerfile car_service'
             }
         }
         

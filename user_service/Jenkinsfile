@@ -5,7 +5,7 @@ pipeline {
         stage('Build & Dockerize User-Service') {
             steps {
                 echo 'Building Django application and creating Docker image...'
-                sh 'docker build -t atakandockerdevops/arac_kiralama_django:latest -f Dockerfile .'
+                sh 'docker build -t atakandockerdevops/arac_kiralama_django:latest -f user_service/Dockerfile user_service'
             }
         }
         
