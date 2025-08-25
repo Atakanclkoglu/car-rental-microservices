@@ -25,8 +25,8 @@ pipeline {
                 // Buraya user-service'i build eden docker komutlarını yazın.
                 // Örnek:
                 sh 'docker build -t atakandockerdevops/user_service:latest -f user-service/Dockerfile user-service'
-                withCredentials(...) {
-                    sh 'docker login ...'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
                     sh 'docker push atakandockerdevops/user_service:latest'
                 }
             }
@@ -41,8 +41,8 @@ pipeline {
                 // Buraya car-service'i build eden docker komutlarını yazın.
                 // Örnek:
                 sh 'docker build -t atakandockerdevops/car_service:latest -f car-service/Dockerfile car-service'
-                withCredentials(...) {
-                    sh 'docker login ...'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
                     sh 'docker push atakandockerdevops/car_service:latest'
                 }
             }
