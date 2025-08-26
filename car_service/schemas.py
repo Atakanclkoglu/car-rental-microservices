@@ -1,20 +1,30 @@
 from pydantic import BaseModel
 
+# BaseModel'ler, API'deki veri alışverişini doğrulamak için kullanılır.
+
 class CarBase(BaseModel):
-    brand: str
-    model: str
-    year: int
-    price_per_day: float
-    image_url:str
+    # Veritabanına kaydedeceğimiz verilerin temel yapısı
+    company: str
+    car_name: str
+    engine: str
+    total_speed: str
+    performance_0_100_kmh: str
+    daily_price: int
+    fuel_type: str
+    seats: str
+    torque: str
 
 class CarCreate(CarBase):
+    # Yeni bir araba oluştururken kullanılan model
     is_available: bool = True
 
 class Car(CarBase):
+    # Veritabanından gelen veriyi doğrulamak için kullanılan model
     id: int
     is_available: bool
 
     class Config:
+        # ORM'den gelen veriyi bu modele dönüştürmeye yarar
         orm_mode = True
 
 class BookingBase(BaseModel):

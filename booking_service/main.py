@@ -44,7 +44,7 @@ async def calculate_booking_price(booking_request: BookingRequest):
             response = await client.get(f"{car_service_url}{booking_request.car_id}")
             response.raise_for_status() 
             car_details = response.json()
-            daily_rate = car_details.get("price_per_day")
+            daily_rate = car_details.get("daily_price")
 
             if daily_rate is None:
                 raise HTTPException(status_code=404, detail="Araba bulunamadı - Lütfen araba ekleyiniz.")

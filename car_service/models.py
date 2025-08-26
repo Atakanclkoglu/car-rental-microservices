@@ -7,18 +7,21 @@ Base = declarative_base()
 class Car(Base):
     __tablename__ = "cars"
     id = Column(Integer, primary_key=True, index=True)
-    brand = Column(String, index=True)
-    model = Column(String)
-    year = Column(Integer)
-    price_per_day = Column(Float)
-    image_url = Column(String)
-    is_available = Column(Boolean, default=True) # Bu satırı ekle
+    company = Column(String, index=True)
+    car_name = Column(String)
+    engine = Column(String)
+    total_speed = Column(String)
+    performance_0_100_kmh = Column(String)
+    daily_price = Column(Integer)  # JSON'a göre Float yerine Integer
+    fuel_type = Column(String)
+    seats = Column(String)
+    torque = Column(String)
+    is_available = Column(Boolean, default=True)
 
 class Booking(Base):
     __tablename__ = "bookings"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer)
     car_id = Column(Integer)
-    start_date = Column(String) # Normalde Date olmalı
-    end_date = Column(String) # Normalde Date olmalı
+    start_date = Column(String)
+    end_date = Column(String)
