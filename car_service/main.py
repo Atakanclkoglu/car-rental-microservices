@@ -4,12 +4,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
 from pydantic import BaseModel
+import redis
+import json
 
 import models, schemas, database
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError
 
+# --- Redis ve Elasticsearch Bağlantıları için Çevre Değişkenleri ---
+ELASTIC_SEARCH_HOST = os.getenv("ELASTIC_SEARCH_HOST", "elasticsearch")
+ELASTIC_SEARCH_PORT = os.getenv("ELASTIC_SEARCH_PORT", "9200")
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
 
 # --- Veritabanı ve Elasticsearch Bağlantıları ---
 DB_URL = os.getenv("DB_URL")
@@ -20,9 +27,18 @@ SessionLocal = database.SessionLocal
 
 # Elasticsearch bağlantısı
 ES_CLIENT = Elasticsearch(
-    ['http://elasticsearch:9200'], 
+    [f'http://{ELASTIC_SEARCH_HOST}:{ELASTIC_SEARCH_PORT}'],
     basic_auth=('elastic', 'elastic_pass')
 )
+
+# Redis bağlantısı
+try:
+    redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
+    redis_client.ping()
+    print("Redis'e başarıyla bağlanıldı.")
+except redis.exceptions.ConnectionError as e:
+    print(f"Redis bağlantı hatası: {e}. Uygulama Redis önbelleği olmadan çalışacak.")
+    redis_client = None
 
 app = FastAPI()
 
@@ -68,6 +84,11 @@ def create_car(car: schemas.CarCreate, db: Session = Depends(database.get_db)):
     db.add(db_car)
     db.commit()
     db.refresh(db_car)
+    
+    # Yeni araba eklendiğinde önbelleği temizle
+    if redis_client:
+        redis_client.delete("all_cars")
+
     return db_car
 
 # Araçları listeleme ve filtreleme uç noktası (Elasticsearch ile güncellendi)
@@ -78,6 +99,16 @@ def get_filtered_cars(
     min_price: Optional[int] = None,
     max_price: Optional[int] = None
 ):
+    # Önbellek anahtarını belirle
+    cache_key = "all_cars"
+    
+    # Eğer sorguda filtre yoksa doğrudan Redis'ten veriyi kontrol et
+    if redis_client and not any([car_name, min_price, max_price]):
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            print("Veri Redis önbelleğinden döndürüldü.")
+            return json.loads(cached_data)
+
     try:
         query_body = {
             "query": {
@@ -109,34 +140,56 @@ def get_filtered_cars(
                 "range": {
                     "daily_price": price_range
                 }
-            })
+            }
+        )
 
+        # Eğer hiçbir filtre yoksa, tüm verileri getir
+        if not car_name and not min_price and not max_price:
+            query_body["query"] = {"match_all": {}}
+        
         res = ES_CLIENT.search(index="cars", body=query_body, size=10000)
         
         car_ids = [hit['_source']['id'] for hit in res['hits']['hits']]
         
-        # PostgreSQL'den orijinal verileri çek (burada sadece id'ler üzerinden çekim yapıyoruz)
+        # PostgreSQL'den orijinal verileri çek
         cars = db.query(models.Car).filter(models.Car.id.in_(car_ids)).all()
         
         # Elasticsearch'teki sıralamayı koru
         car_dict = {car.id: car for car in cars}
         ordered_cars = [car_dict[id] for id in car_ids if id in car_dict]
 
+        # Eğer sorguda filtre yoksa veriyi Redis'e yaz
+        if redis_client and not any([car_name, min_price, max_price]):
+            redis_client.setex(cache_key, 3600, json.dumps([Car.from_orm(car).model_dump() for car in ordered_cars]))
+            print("Veri Redis önbelleğine yazıldı.")
+        
         return ordered_cars
 
     except NotFoundError:
         return []
-
     except Exception as e:
         print(f"Arama hatası: {e}")
-        raise HTTPException(status_code=500, detail="Arama sırasında bir hata oluştu.")
+        # Hata durumunda Elasticsearch'e bağlanmadan direkt veritabanından çekme
+        cars = db.query(models.Car).all()
+        return cars
 
 # Belirli bir aracı getirme uç noktası (READ)
 @app.get("/cars/{car_id}", response_model=schemas.Car)
 def get_car(car_id: int, db: Session = Depends(database.get_db)):
+    cache_key = f"car:{car_id}"
+    if redis_client:
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            print("Veri Redis önbelleğinden döndürüldü.")
+            return Car.model_validate_json(cached_data)
+
     db_car = db.query(models.Car).filter(models.Car.id == car_id).first()
     if db_car is None:
         raise HTTPException(status_code=404, detail="Car not found")
+        
+    if redis_client:
+        redis_client.setex(cache_key, 3600, Car.from_orm(db_car).model_dump_json())
+    
     return db_car
 
 # Araç silme uç noktası (DELETE)
@@ -145,6 +198,13 @@ def delete_car(car_id: int, db: Session = Depends(database.get_db)):
     db_car = db.query(models.Car).filter(models.Car.id == car_id).first()
     if db_car is None:
         raise HTTPException(status_code=404, detail="Car not found")
+    
     db.delete(db_car)
     db.commit()
+
+    # Silme işleminden sonra ilgili önbellekleri temizle
+    if redis_client:
+        redis_client.delete(f"car:{car_id}")
+        redis_client.delete("all_cars")
+
     return db_car
